@@ -11,33 +11,43 @@ import org.koin.dsl.module
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
+private const val BASE_URL = "https://tickets-api.halitkalayci.com/"
+
 val dataModule = module {
 
     single {
         Json {
             ignoreUnknownKeys = true
+            explicitNulls = false
+            isLenient = true
+        }
+    }
+
+    single {
+        HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
         }
     }
 
     single {
         OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
+            .addInterceptor(get<HttpLoggingInterceptor>())
             .build()
     }
 
     single {
         Retrofit.Builder()
-            .baseUrl("https://tickets-api.halitkalayci.com/")
-            .client(get())
-            .addConverterFactory(
-                get<Json>().asConverterFactory("application/json".toMediaType())
-            )
+            .baseUrl(BASE_URL)
+            .client(get<OkHttpClient>())
+            .addConverterFactory(get<Json>().asConverterFactory("application/json".toMediaType()))
             .build()
     }
 
-    single<AuthApi> { get<Retrofit>().create(AuthApi::class.java) }
+    single { get<Retrofit>().create(AuthApi::class.java) }
 
-    single<AuthRepository> { AuthRepositoryImpl(get()) }
+    single<AuthRepository> {
+        AuthRepositoryImpl(
+            authApi = get()
+        )
+    }
 }
